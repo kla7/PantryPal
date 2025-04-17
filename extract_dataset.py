@@ -142,8 +142,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-g', '--get_unique_ingredients',
         action='store_true',
-        help='A boolean determining whether unique ingredients should be extracted from ingredients.json. '
-             'Default is False'
+        help='A boolean determining whether unique ingredients should be extracted from ingredients.json.'
     )
     args = parser.parse_args()
 
