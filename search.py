@@ -21,15 +21,22 @@ def search_recipes(user_ingredients, mode, top_k=10):
         if idx == -1: #if it cannot find enough recipes
             continue
 
-        chunk = chunks[idx]
-        recipe_ingredients = set(i.strip().lower() for i in chunk["ingredients"].split(", "))
+        if idx < 0 or idx >= len(chunks): #bounds check
+            continue
+
+        try:
+            chunk = chunks[idx]
+            recipe_ingredients = set(i.strip().lower() for i in chunk["ingredients"].split(", "))
+        except Exception as e:
+            print(f"Failed to process index {idx}: {e}")
+            continue
 
         if mode == "inclusive":
             if recipe_ingredients & user_set:  # at least one match
                 results.append(chunk)
 
         elif mode == "exclusive":
-            if recipe_ingredients == user_set:  # exact match only
+            if recipe_ingredients.issubset(user_set) and recipe_ingredients & user_set:
                 results.append(chunk)
 
 
@@ -48,3 +55,4 @@ for r in inclusive_results:
 print("\n Exclusive Results:")
 for r in exclusive_results:
     print(f" - {r['title']} → {r['chunk']}")
+
