@@ -2,6 +2,7 @@ import json
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from transformers import pipeline
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 index = faiss.read_index("processed/recipe_index.faiss") #load index
@@ -42,17 +43,51 @@ def search_recipes(user_ingredients, mode, top_k=10):
 
     return results[:top_k]
 
-# example
+# # example
+# user_input = ["milk", "vanilla", "nuts"]
+
+# inclusive_results = search_recipes(user_input, mode="inclusive", top_k=10)
+# exclusive_results = search_recipes(user_input, mode="exclusive", top_k=10)
+
+# print("Inclusive Results:")
+# for r in inclusive_results:
+#     print(f" - {r['title']} → {r['chunk']}")
+
+# print("\n Exclusive Results:")
+# for r in exclusive_results:
+#     print(f" - {r['title']} → {r['chunk']}")
+
+# 1. Get user input
 user_input = ["milk", "vanilla", "nuts"]
+mode = "inclusive"
+top_k = 5
 
-inclusive_results = search_recipes(user_input, mode="inclusive", top_k=10)
-exclusive_results = search_recipes(user_input, mode="exclusive", top_k=10)
+# 2. Search the FAISS index
+retrieved_chunks = search_recipes(user_input, mode=mode, top_k=top_k)
 
-print("Inclusive Results:")
-for r in inclusive_results:
-    print(f" - {r['title']} → {r['chunk']}")
+# 3. Build a prompt using the retrieved results
+def build_prompt(user_ingredients, retrieved_chunks):
+    context = "\n".join([f"{chunk['title']}: {chunk['chunk']}" for chunk in retrieved_chunks])
+    prompt = f"""You are a helpful recipe assistant.
 
-print("\n Exclusive Results:")
-for r in exclusive_results:
-    print(f" - {r['title']} → {r['chunk']}")
+User Ingredients: {", ".join(user_ingredients)}
+
+Here are some relevant recipe snippets:
+{context}
+
+Using these, write a new, complete recipe that uses the given ingredients. Be creative but stay practical.
+
+Generated Recipe:"""
+    return prompt
+
+# 4. Load a text generation pipeline (using a small CPU-friendly model)
+generator = pipeline("text-generation", model="google/flan-t5-base")  # Swap out for bigger ones later
+
+# 5. Generate the recipe
+prompt = build_prompt(user_input, retrieved_chunks)
+output = generator(prompt, max_new_tokens=300, do_sample=True, temperature=0.8)
+
+# 6. Show the result
+print("\n🍽️ Suggested Recipe:\n")
+print(output[0]['generated_text'])
 
