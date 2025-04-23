@@ -43,20 +43,6 @@ def search_recipes(user_ingredients, mode, top_k=10):
 
     return results[:top_k]
 
-# # example
-# user_input = ["milk", "vanilla", "nuts"]
-
-# inclusive_results = search_recipes(user_input, mode="inclusive", top_k=10)
-# exclusive_results = search_recipes(user_input, mode="exclusive", top_k=10)
-
-# print("Inclusive Results:")
-# for r in inclusive_results:
-#     print(f" - {r['title']} → {r['chunk']}")
-
-# print("\n Exclusive Results:")
-# for r in exclusive_results:
-#     print(f" - {r['title']} → {r['chunk']}")
-
 # 1. Get user input
 user_input = ["milk", "vanilla", "nuts"]
 mode = "inclusive"
@@ -81,7 +67,7 @@ Generated Recipe:"""
     return prompt
 
 # 4. Load a text generation pipeline (using a small CPU-friendly model)
-generator = pipeline("text-generation", model="google/flan-t5-base")  # Swap out for bigger ones later
+generator = pipeline("text2text-generation", model="google/flan-t5-base") # Swap out for bigger ones later
 
 # 5. Generate the recipe
 prompt = build_prompt(user_input, retrieved_chunks)
