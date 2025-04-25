@@ -1,0 +1,11 @@
+name: rec-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10  # safe and widely supported
+  - numpy
+  - faiss-cpu  # or faiss-gpu if you plan to use GPU
+  - pip
+  - pip:
+      - sentence-transformers
