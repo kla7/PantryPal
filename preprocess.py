@@ -13,22 +13,25 @@ df.to_csv("processed/RecipeNLG_50k.csv", index=False)
 def clean_list_column(col): #cleans stringified lists
     return ast.literal_eval(col)
 
+df = pd.read_csv("processed/RecipeNLG_50k.csv")
+
 df['NER'] = df['NER'].apply(clean_list_column)
 df['directions'] = df['directions'].apply(clean_list_column)
 
-chunks = []
+recipes = []
 for _, row in tqdm(df.iterrows(), total=len(df)): # chunking
     title = row['title']
     ingredients = ", ".join(row['NER'])
-    for step_id, step in enumerate(row['directions']):
-        chunks.append({
-            "title": title,
-            "ingredients": ingredients,
-            "chunk": f"Step {step_id+1}: {step}"
-        })
+    numbered_directions = [f"{i+1}. {sentence}" for i, sentence in enumerate(row['directions'])]
+    directions = "\n".join(numbered_directions)
+    recipes.append({
+        "title": title,
+        "ingredients": ingredients,
+        "directions": directions
+    })
 
-with open("processed/recipe_chunks_50k.jsonl", "w") as f: #save to json
-    for chunk in chunks:
-        f.write(json.dumps(chunk) + "\n")
+with open("processed/recipes_50k.jsonl", "w") as f: #save to json
+    for recipe in recipes:
+        f.write(json.dumps(recipe) + "\n")
 
-print(f"Created {len(chunks)} chunks across 50,000 recipes.")
+print(f"Created {len(recipes)} recipes across 50,000 recipes.")
