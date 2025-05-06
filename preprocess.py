@@ -15,13 +15,14 @@ def clean_list_column(col): #cleans stringified lists
 
 df = pd.read_csv("processed/RecipeNLG_50k.csv")
 
-df['NER'] = df['NER'].apply(clean_list_column)
+df['ingredients'] = df['ingredients'].apply(clean_list_column)
 df['directions'] = df['directions'].apply(clean_list_column)
 
 recipes = []
-for _, row in tqdm(df.iterrows(), total=len(df)): # chunking
+for _, row in tqdm(df.iterrows(), total=len(df)):
     title = row['title']
-    ingredients = ", ".join(row['NER'])
+    # Use full ingredients with measurements
+    ingredients = "\n".join(f"- {ing}" for ing in row['ingredients'])
     numbered_directions = [f"{i+1}. {sentence}" for i, sentence in enumerate(row['directions'])]
     directions = "\n".join(numbered_directions)
     recipes.append({
@@ -30,8 +31,8 @@ for _, row in tqdm(df.iterrows(), total=len(df)): # chunking
         "directions": directions
     })
 
-with open("processed/recipes_50k.jsonl", "w") as f: #save to json
+with open("processed/recipes_50k.jsonl", "w") as f:
     for recipe in recipes:
         f.write(json.dumps(recipe) + "\n")
 
-print(f"Created {len(recipes)} recipes across 50,000 recipes.")
+print(f"Created {len(recipes)} recipes with full ingredients.")

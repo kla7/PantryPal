@@ -2,78 +2,69 @@ import json
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
+import re
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
-index = faiss.read_index("processed/recipe_index.faiss") #load index
+index = faiss.read_index("processed/recipe_index.faiss")
 with open("processed/recipe_metadata.json", "r") as f:
-    chunks = json.load(f) #load chunks
+    recipes = json.load(f)
 
-def search_recipes(user_ingredients, mode, top_k=10):
+# Normalize ingredient strings by removing quantities, units, and formatting
+def normalize_ingredient(ingredient):
+    ingredient = ingredient.lower()
+    ingredient = re.sub(r"[^a-zA-Z ]", "", ingredient)  # remove punctuation/numbers
+    ingredient = re.sub(r"\b(?:cup|c|tbsp|tsp|teaspoon|tablespoon|pint|quart|oz|ounce|grams|g|ml|litre|l|lb|pound|dash|pinch|pkg|box|boxes|can|cans|qt)\b", "", ingredient)
+    ingredient = re.sub(r"\b(?:softened|chopped|minced|sliced|diced|crushed|shredded|melted|beaten|large|small|medium|fresh|dry|ground)\b", "", ingredient)
+    ingredient = re.sub(r"\s+", " ", ingredient).strip()
+    return ingredient
+
+
+def search_faiss_and_filter(user_ingredients, mode="inclusive", top_k=10):
     query = ", ".join(user_ingredients)
-    embedding = model.encode([query], normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True, device="cpu")[0].astype("float32")
+    embedding = model.encode(
+        [query], normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
+    )[0].astype("float32")
 
-    D, I = index.search(np.array([embedding]), top_k * 50) # retrieve top_k * 50 to cast a wider net
+    D, I = index.search(np.array([embedding]), top_k * 50)
 
+    user_set = set(normalize_ingredient(i) for i in user_ingredients)
     results = []
-    user_set = set(i.strip().lower() for i in user_ingredients)
 
     for idx in I[0]:
-        if idx == -1: #if it cannot find enough recipes
+        if idx == -1 or idx < 0 or idx >= len(recipes):
             continue
 
-        if idx < 0 or idx >= len(chunks): #bounds check
-            continue
-
-        try:
-            chunk = chunks[idx]
-            recipe_ingredients = set(i.strip().lower() for i in chunk["ingredients"].split(", "))
-        except Exception as e:
-            print(f"Failed to process index {idx}: {e}")
-            continue
+        recipe = recipes[idx]
+        ingredient_lines = recipe["ingredients"].split("\n")
+        recipe_ingredients_set = set(normalize_ingredient(line) for line in ingredient_lines if line.strip())
 
         if mode == "inclusive":
-            if recipe_ingredients & user_set:  # at least one match
-                results.append(chunk)
+            if all(any(user_ing in rec_ing for rec_ing in recipe_ingredients_set) for user_ing in user_set):
+                results.append(recipe)
 
         elif mode == "exclusive":
-            if recipe_ingredients.issubset(user_set) and recipe_ingredients & user_set:
-                results.append(chunk)
+            if all(any(rec_ing in user_ing for user_ing in user_set) for rec_ing in recipe_ingredients_set) and user_set:
+                results.append(recipe)
 
+        if len(results) >= top_k:
+            break
 
-    return results[:top_k]
+    return results
 
-# 1. Get user input
+def print_full_recipes(recipes):
+    if not recipes:
+        print("No matching recipes found.")
+        return
+    for r in recipes:
+        print(f"\n🧾 {r['title']}\n")
+        print(f"Ingredients:\n{r['ingredients']}\n")
+        print(f"Directions:\n{r['directions']}\n")
+        print("=" * 60)
+
+# Example usage
 user_input = ["milk", "vanilla", "nuts"]
 mode = "inclusive"
 top_k = 5
 
-# 2. Search the FAISS index
-retrieved_chunks = search_recipes(user_input, mode=mode, top_k=top_k)
-
-# 3. Build a prompt using the retrieved results
-def build_prompt(user_ingredients, retrieved_chunks):
-    context = "\n".join([f"{chunk['title']}: {chunk['chunk']}" for chunk in retrieved_chunks])
-    prompt = f"""You are a helpful recipe assistant.
-
-User Ingredients: {", ".join(user_ingredients)}
-
-Here are some relevant recipe snippets:
-{context}
-
-Using these, write a new, complete recipe that uses the given ingredients. Be creative but stay practical.
-
-Generated Recipe:"""
-    return prompt
-
-# 4. Load a text generation pipeline (using a small CPU-friendly model)
-generator = pipeline("text2text-generation", model="google/flan-t5-base") # Swap out for bigger ones later
-
-# 5. Generate the recipe
-prompt = build_prompt(user_input, retrieved_chunks)
-output = generator(prompt, max_new_tokens=300, do_sample=True, temperature=0.8)
-
-# 6. Show the result
-print("\n🍽️ Suggested Recipe:\n")
-print(output[0]['generated_text'])
-
+matched_recipes = search_faiss_and_filter(user_input, mode=mode, top_k=top_k)
+print_full_recipes(matched_recipes)
