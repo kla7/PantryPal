@@ -1,6 +1,7 @@
 import re
 import json
 import argparse
+from collections import Counter
 
 units = {'c', 'cup', 'cups', 't', 'tsp', 'teaspoon', 'teaspoons', 'tbsp', 'tablespoon', 'tablespoons',
          'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'can', 'cans', 'jar', 'jars',
@@ -68,31 +69,27 @@ if __name__ == '__main__':
     parser.add_argument(
         'input_json',
         type=str,
-        help='A json file containing the measurements.'
+        help='A .json file containing the measurements.'
     )
     parser.add_argument(
         'output_json',
         type=str,
-        help='A json file in which the extracted ingredients should be written.'
+        help='A .json file in which the extracted ingredients should be written.'
     )
     args = parser.parse_args()
 
     json_file = args.input_json
     output_file = args.output_json
-    ingredients_dict = {}
+    ingredients_dict = Counter()
 
     with open(json_file, 'r', encoding='utf-8') as f:
         recipes_dict = json.load(f)
 
     for recipe_id, measurements in recipes_dict.items():
-        if recipe_id not in ingredients_dict:
-            ingredients_dict[recipe_id] = []
         for measurement in measurements['measurements']:
             ingredient = extract_ingredients(measurement)
             if ingredient:
-                ingredients_dict[recipe_id].append(ingredient)
+                ingredients_dict[ingredient] += 1
 
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(ingredients_dict, f, indent=2, ensure_ascii=False)
-
-

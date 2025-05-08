@@ -1,5 +1,4 @@
 import json
-import csv
 import re
 import argparse
 
@@ -12,54 +11,43 @@ title_remove_list = [
     r'clay'
 ]
 
-measurement_remove_list = [
+ingredients_remove_list = [
     r'glue'
 ]
 
 
-def clean_recipes(json_file: str, csv_file: str) -> None:
+def clean_recipes(jsonl_input: str, jsonl_output: str) -> None:
     """
     Remove recipes that are inedible.
-    :param json_file: 'A json file containing the raw recipes.'
-    :param csv_file: 'A csv file in which the cleaned recipes should be written.'
-    :return:
+    :param jsonl_input: 'A .jsonl file containing the raw recipes.'
+    :param jsonl_output: 'A .jsonl file in which the cleaned recipes should be written.'
     """
-    with open(json_file, 'r', encoding='utf-8') as f:
-        recipes_dict = json.load(f)
+    recipes = []
+    cleaned_recipes = []
 
-    remove_ids = []
+    with open(jsonl_input, 'r', encoding='utf-8') as f:
+        for line in f:
+            recipes.append(json.loads(line))
 
-    for recipe_id, recipe in recipes_dict.items():
-        recipe_name = recipe['recipe_name'].lower()
+    for recipe in recipes:
+        recipe_name = recipe['title'].lower()
+        recipe_ingredients = recipe['ingredients'].lower()
 
         if any(re.search(keyword, recipe_name) for keyword in title_remove_list):
             print(recipe_name)
-            remove_ids.append(recipe_id)
-
-    cleaned_recipes = []
-
-    for recipe_id, recipe in recipes_dict.items():
-        if recipe_id in remove_ids:
             continue
-        cleaned_recipes.append({
-            'Unnamed: 0': recipe_id,
-            'title': recipe['recipe_name'],
-            'ingredients': json.dumps(recipe['measurements']),
-            'directions': json.dumps(recipe['directions']),
-            'link': recipe['link'],
-            'source': recipe['source'],
-            'NER': json.dumps(recipe['ingredients']),
-        })
 
-    print(f'Removed {len(remove_ids)} recipes.')
+        if any(re.search(keyword, recipe_ingredients) for keyword in ingredients_remove_list):
+            print(recipe_ingredients)
+            continue
 
-    fieldnames = ['Unnamed: 0', 'title', 'ingredients', 'directions', 'link', 'source', 'NER']
+        cleaned_recipes.append(recipe)
 
-    with open(csv_file, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+    with open(jsonl_output, 'w', encoding='utf-8') as f:
         for recipe in cleaned_recipes:
-            writer.writerow(recipe)
+            f.write(json.dumps(recipe) + '\n')
+
+    print(f'Removed {len(recipes) - len(cleaned_recipes)} recipes.')
 
 
 if __name__ == '__main__':
@@ -68,18 +56,18 @@ if __name__ == '__main__':
         description='Extract ingredients from a file containing measurements.'
     )
     parser.add_argument(
-        'input_json',
+        'input_jsonl',
         type=str,
-        help='A json file containing the raw recipes.'
+        help='A .jsonl file containing the raw recipes.'
     )
     parser.add_argument(
-        'output_csv',
+        'output_jsonl',
         type=str,
-        help='A csv file in which the cleaned recipes should be written.'
+        help='A .jsonl file in which the cleaned recipes should be written.'
     )
     args = parser.parse_args()
 
-    json_input = args.input_json
-    csv_output = args.output_csv
+    jsonl_input = args.input_jsonl
+    jsonl_output = args.output_jsonl
 
-    clean_recipes(json_input, csv_output)
+    clean_recipes(jsonl_input, jsonl_output)
