@@ -20,7 +20,8 @@ def normalize_ingredient(ingredient: str) -> str:
     return ingredient
 
 
-def search_faiss_and_filter(model, index, recipes, user_ingredients, avoid_ingredients, user_keywords, mode="inclusive", top_k=10):
+def search_faiss_and_filter(model, index, recipes, user_ingredients, avoid_ingredients, user_keywords,
+                            mode="inclusive", top_k=10):
     """
     Retrieves search results given the user's search parameters.
     :param model: Embedding model
@@ -38,20 +39,20 @@ def search_faiss_and_filter(model, index, recipes, user_ingredients, avoid_ingre
         [ingredient_query], normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
     )[0].astype("float32")
 
-    D, I = index.search(np.array([ingredient_embedding]), 1000)
+    distances, indices = index.search(np.array([ingredient_embedding]), 1000)
 
     if user_keywords:
         keyword_emb = model.encode(
             [user_keywords], normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
         )[0].astype("float32")
 
-        candidate_embs = np.array([index.reconstruct(int(idx)) for idx in I[0]])
+        candidate_embs = np.array([index.reconstruct(int(idx)) for idx in indices[0]])
         sims = candidate_embs @ keyword_emb
 
         sorted_indices = np.argsort(-sims)[:500]
-        filtered = I[0][sorted_indices]
+        filtered = indices[0][sorted_indices]
     else:
-        filtered = I[0]
+        filtered = indices[0]
 
     user_set = set(normalize_ingredient(i) for i in user_ingredients)
     avoid_set = set(normalize_ingredient(i) for i in avoid_ingredients)
@@ -104,5 +105,14 @@ if __name__ == '__main__':
     user_keywords = "sauce"
     top_k = 5
 
-    matched_recipes = search_faiss_and_filter(model, index, recipes, user_ing, avoid_list, user_keywords, mode=mode, top_k=top_k)
+    matched_recipes = search_faiss_and_filter(
+        model=model,
+        index=index,
+        recipes=recipes,
+        user_ingredients=user_ing,
+        avoid_ingredients=avoid_list,
+        user_keywords=user_keywords,
+        mode=mode,
+        top_k=top_k
+    )
     print_full_recipes(matched_recipes)
