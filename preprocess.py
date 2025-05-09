@@ -4,14 +4,19 @@ import os
 import json
 from tqdm import tqdm
 
-df_full = pd.read_csv("archive/RecipeNLG_dataset.csv") # load full dataset
+df_full = pd.read_csv("archive/RecipeNLG_dataset.csv")  # load full dataset
 
-df = df_full.iloc[:50000].copy() # first 50k entries
+df = df_full.iloc[:50000].copy()  # first 50k entries
 os.makedirs("processed", exist_ok=True)
 df.to_csv("processed/RecipeNLG_50k.csv", index=False)
 
-def clean_list_column(col): #cleans stringified lists
+
+def clean_list_column(col):
+    """
+    Cleans stringified lists
+    """
     return ast.literal_eval(col)
+
 
 df = pd.read_csv("processed/RecipeNLG_50k.csv")
 
