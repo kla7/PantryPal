@@ -46,7 +46,7 @@ streamlit run app.py
 
 ## Contents of this repository
 
-This folder contains 12 files and 1 directory:
+This folder contains 13 files and 1 directory:
 
 1. This **README** file.
 2. **search**, a directory containing the FAISS index file and the metadata json file used for FAISS vector search. 
@@ -62,6 +62,7 @@ This folder contains 12 files and 1 directory:
 dietary restriction.
 12. **environment.yml**, a file containing information to build a conda environment.
 13. **requirements.txt**, a file containing the dependencies for the project.
+14. **final_report.pdf**, a document containing the details of the project.
 
 ## Steps for replication
 
