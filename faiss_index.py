@@ -2,32 +2,61 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import json
+import argparse
 
-recipes = []
-with open("processed/recipes_50k.jsonl", "r") as f: #load recipes
-    for line in f:
-        recipes.append(json.loads(line))
 
-texts = [f"{r['title']}: {r['ingredients']}\n{r['directions']}" for r in recipes] #texts for embedding
+def index_faiss(input_file: str, output_dir: str) -> None:
+    """
+    Create FAISS index from input file.
+    :param input_file: Input .jsonl file containing the recipes.
+    :param output_dir: Directory in which to save the FAISS index.
+    """
+    recipes = []
 
-model = SentenceTransformer("all-MiniLM-L6-v2") #embedding model
+    with open(input_file, "r", encoding="utf-8") as f:  # load recipes
+        for line in f:
+            recipes.append(json.loads(line))
 
-batch_size = 8
-all_embeddings = []
+    texts = [f"{r['title']}: {r['ingredients']}\n{r['directions']}" for r in recipes]  # texts for embedding
 
-for i in range(0, len(texts), batch_size):
-    batch = texts[i:i+batch_size]
-    emb = model.encode(batch, batch_size=batch_size, show_progress_bar=False)
-    all_embeddings.extend(emb)
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # embedding model
 
-embeddings_np = np.array(all_embeddings).astype("float32")
+    batch_size = 8
+    all_embeddings = []
 
-index = faiss.IndexFlatL2(embeddings_np.shape[1]) #creating FAISS index
-index.add(embeddings_np)
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i+batch_size]
+        emb = model.encode(batch, batch_size=batch_size, show_progress_bar=False)
+        all_embeddings.extend(emb)
 
-faiss.write_index(index, "processed/recipe_index.faiss")
+    embeddings_np = np.array(all_embeddings).astype("float32")
 
-with open("processed/recipe_metadata.json", "w") as f:
-    json.dump(recipes, f)
+    index = faiss.IndexFlatL2(embeddings_np.shape[1])  # creating FAISS index
+    index.add(embeddings_np)
 
-print(f"Indexed {index.ntotal} full recipes.")
+    faiss.write_index(index, f"{output_dir}/recipe_index.faiss")
+
+    with open(f"{output_dir}/recipe_metadata.json", "w") as f:
+        json.dump(recipes, f)
+
+    print(f"Indexed {index.ntotal} full recipes.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog='faiss_index.py',
+        description='Create FAISS index.'
+    )
+    parser.add_argument(
+        'input_file',
+        type=str,
+        help='A jsonl file containing the raw recipes.'
+    )
+    parser.add_argument(
+        'output_dir',
+        type=str,
+        help='The directory in which the index and metadata should be written.'
+    )
+    args = parser.parse_args()
+
+    index_faiss(args.input_file, args.output_dir)
