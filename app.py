@@ -97,8 +97,10 @@ with st.sidebar:
             if selected:
                 selected_id = options[selected]
                 selected_recipe = next((r for r in current_user.saved_recipes if r.id == selected_id), None)
+                st.session_state['selected_recipe'] = selected_recipe
 
                 if selected_recipe:
+                    st.markdown(f'### {selected_recipe.title}')
                     st.markdown(f'**Ingredients:**\n{selected_recipe.ingredients}')
                     st.markdown(f'**Directions:**\n{selected_recipe.directions}')
 
@@ -128,6 +130,13 @@ selection_type = st.radio(
 st.session_state['selection_type'] = selection_type
 
 with st.expander('Additional options', expanded=False):
+    search_keywords = st.text_input(
+        'Search keywords',
+        help='Enter keywords, such as "pasta" or "Chinese", for more refined search results.',
+        placeholder='Enter keywords here'
+    )
+    st.session_state['search_keywords'] = search_keywords
+
     dietary_restrictions = st.multiselect(
         'Dietary Restrictions',
         options=dietary.keys(),
@@ -153,6 +162,7 @@ if st.button('Search'):
         recipes=recipes,
         user_ingredients=search_ingredients,
         avoid_ingredients=avoid_ingredients,
+        user_keywords=search_keywords,
         mode=selection_type.lower(),
         top_k=10
     )
