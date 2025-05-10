@@ -5,8 +5,8 @@ from sentence_transformers import SentenceTransformer
 import extract_ingredients
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
-index = faiss.read_index("processed/recipe_index.faiss")
-with open("processed/recipe_metadata.json", "r") as f:
+index = faiss.read_index("search/recipe_index.faiss")
+with open("search/recipe_metadata.json", "r") as f:
     recipes = json.load(f)
 
 

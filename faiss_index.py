@@ -3,6 +3,7 @@ import faiss
 import numpy as np
 import json
 import argparse
+from tqdm import tqdm
 
 
 def index_faiss(input_file: str, output_dir: str) -> None:
@@ -23,8 +24,9 @@ def index_faiss(input_file: str, output_dir: str) -> None:
 
     batch_size = 8
     all_embeddings = []
+    num_batches = (len(texts) + batch_size - 1) // batch_size
 
-    for i in range(0, len(texts), batch_size):
+    for i in tqdm(range(0, len(texts), batch_size), total=num_batches, desc='Embedding'):
         batch = texts[i:i+batch_size]
         emb = model.encode(batch, batch_size=batch_size, show_progress_bar=False)
         all_embeddings.extend(emb)
